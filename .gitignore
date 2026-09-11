@@ -1,0 +1,27 @@
+# cookies.txt — NEVER commit this
+cookies.txt
+cookies_*.txt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# Temp
+tmp/
+.cache/

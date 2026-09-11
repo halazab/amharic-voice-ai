@@ -1,0 +1,12 @@
+# Required packages
+yt-dlp>=2026.0.0
+yt-dlp-ejs>=0.8.0
+yt-dlp-get-pot>=0.3.0
+bgutil-ytdlp-pot-provider>=2.0.0
+datasets==2.20.0
+soundfile
+librosa
+# torch is needed for HF Audio feature encoding
+# CPU-only is fine for dataset construction
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch

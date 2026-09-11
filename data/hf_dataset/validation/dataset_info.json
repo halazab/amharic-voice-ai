@@ -1,0 +1,44 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "audio": {
+      "sampling_rate": 16000,
+      "_type": "Audio"
+    },
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "duration": {
+      "dtype": "float32",
+      "_type": "Value"
+    },
+    "source": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "speaker": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "title": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "uploader": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "upload_date": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "is_ideal_duration": {
+      "dtype": "bool",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}
