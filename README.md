@@ -2,6 +2,34 @@
 
 A complete, production-ready pipeline for building **HuggingFace-compatible Amharic speech recognition datasets** from YouTube videos with Amharic auto-captions. Built to train Whisper / wav2vec2 / XLS-R models for Amharic ASR.
 
+## ✅ Current dataset status
+
+| Metric | Value |
+|---|---|
+| Source videos processed | 7 |
+| Total source video duration | 8.30 hours |
+| **Total usable audio** | **7.28 hours (26,207 s)** |
+| Total segments | 6,401 |
+| Train split | 5,639 examples (6.39 h) |
+| Validation split | 407 examples (0.46 h) |
+| Test split | 355 examples (0.44 h) |
+| Audio format | 16 kHz mono 16-bit PCM WAV |
+| Average segment duration | 4.09 s |
+| Ge'ez-only text | ✅ Character audit clean |
+| Per-video split isolation | ✅ 7 sources, properly split |
+
+## Source videos
+
+| ID | Title | Uploader | Duration | Segments |
+|---|---|---|---|---|
+| `Lmq9SKgU0BA` | 🔴 Rophnan Interview | Asabiw Inspiration | 11.5 min | 157 |
+| `s5dW8J7vDnc` | 📚 የተዋጣለት ተናጋሪ የመሆን ጥበብ (audiobook) | Teddys Podcast | ~5.5 h | 4,811 |
+| `gG6pTF1r3e4` | I Tried the BEST Vs. WORST Rated Restaurant in Ethiopia | — | 28 min | 628 |
+| `PM0uEIYKtCM` | ሙሉ አማርኛ ፊደላት All Amharic Alphabets | — | 27 min | 407 |
+| `Y8d23QZihQw` | ድህነትን እሮጦ ያሸነፈው ሻለቃ ሀይሌ ገብረስላሴ | — | 27 min | 355 |
+| `d8-GQtbaAXY` | What can we learn from John? — Pastor Gugssa Biru | — | 27 min | 19 |
+| `sMnPHhQaoyM` | ከብ/ጄኔራል ካሳየ ጨመዳ ጋር ተደረገ ቆይታ | — | 29 min | 24 |
+
 ## What this repo contains
 
 - **`scripts/`** — End-to-end pipeline code:
@@ -12,31 +40,14 @@ A complete, production-ready pipeline for building **HuggingFace-compatible Amha
   - `start_bgutil.py` — local bgutil-pot server (for YouTube bot-block bypass)
   - `smoke_test.py` — synthetic-data end-to-end test
   - `validate_dataset.py` — load dataset back and inspect samples
+  - `rebuild_dataset.py` — rebuild manifests + HF dataset from existing segments
 - **`data/`** — The actual dataset (HuggingFace format, ready to `load_from_disk`)
-  - `raw/` — original downloads (audio + VTT + info.json per video)
-  - `segments/<vid>/0001.wav` + `0001.txt` — per-subtitle audio clips
+  - `raw/` — original downloads (VTT + info.json + normalized audio per video)
+  - `segments/<vid>/0001.wav` + `0001.txt` — per-subtitle audio clips (6,401 total)
   - `manifests/{train,validation,test}.jsonl` — JSONL manifests
   - `hf_dataset/{train,validation,test,all}/` — HuggingFace `save_to_disk` format
   - `README.md` + `character_audit.txt` — full provenance + Unicode audit
 - **`docs/`** — Candidate video lists, scaling strategy notes
-
-## Current dataset status
-
-| Metric | Value |
-|---|---|
-| Source videos processed | 1 |
-| Total source duration | 11.5 min |
-| Total usable audio | 10.86 min (651.4 s) |
-| Total segments | 157 |
-| Train split | 143 examples (10.00 min) |
-| Validation split | 7 examples (0.44 min) |
-| Test split | 7 examples (0.42 min) |
-| Audio format | 16 kHz mono 16-bit PCM WAV |
-| Average segment duration | 4.15 s |
-| Ge'ez-only text | ✅ Character audit clean |
-| Per-video split isolation | ⚠ Single video → within-video temporal split |
-
-**⚠ The current dataset is a proof-of-concept (10.86 min).** To reach 10+ hours you need to process more videos. Instructions below.
 
 ## Pipeline overview
 
@@ -123,15 +134,19 @@ train = load_from_disk("data/hf_dataset/train")
 val   = load_from_disk("data/hf_dataset/validation")
 test  = load_from_disk("data/hf_dataset/test")
 
+print(f"Train: {len(train)} examples, {sum(train['duration'])/3600:.2f}h")
+print(f"Val:   {len(val)} examples, {sum(val['duration'])/3600:.2f}h")
+print(f"Test:  {len(test)} examples, {sum(test['duration'])/3600:.2f}h")
+
 print(train[0])
 # {'audio': {'path': '0001.wav', 'array': array([..., dtype=float64]), 'sampling_rate': 16000},
-#  'text': 'ላይፍ በጣም ህይወት ማለት እኮ ይሄ ነው',
-#  'duration': 2.81,
-#  'source': 'youtube:Lmq9SKgU0BA',
+#  'text': 'የሰው ልጅ ታላቁ ጥበብ በጉልበቱ የመግዛት ችሎታው ሳይሆን',
+#  'duration': 4.83,
+#  'source': 'youtube:s5dW8J7vDnc',
 #  'speaker': 'unknown',
-#  'title': '...',
-#  'uploader': 'Asabiw Inspiration',
-#  'upload_date': '20250527',
+#  'title': '📚[👉ሙሉ መፅሐፍ]  የተዋጣለት ተናጋሪ የመሆን ጥበብ',
+#  'uploader': 'Teddys Podcast',
+#  'upload_date': '...',
 #  'is_ideal_duration': False}
 ```
 
@@ -178,23 +193,14 @@ The text cleaner (`amharic_text_utils.py`) enforces:
 - **≥3 videos:** Greedy algorithm assigns whole videos to splits based on duration targets. Train 90%, val 5%, test 5%.
 - **<3 videos:** Falls back to within-video temporal split (first 90% train, middle 5% val, last 5% test). NOT ideal — warn the user.
 
-## Scaling to 10+ hours
+## Scaling beyond 7.28 hours
 
-To reach 10 hours of usable Amharic audio, you need approximately:
+The pipeline is set up to scale. See `docs/SCALING.md` for strategies:
 
-- ~55 videos averaging 10 min each (with ~50% yield after silence/music removal)
-- Aim for diversity: news, interviews, sermons, podcasts, conversations
-- The verifier script (`verify_candidates.py`) auto-filters candidates by:
-  - Has Amharic captions (yes/no)
-  - Duration 2-30 min (sweet spot)
-  - Distinct video IDs (no duplicates)
-
-**⚠ YouTube bot-block reality check:** After ~10 video verifications in rapid succession, YouTube will rate-limit your cookies and start returning "Sign in to confirm you're not a bot" errors. Strategies to deal with this:
-
-1. **Process in batches of ~10 videos per session**, then wait 1-2 hours between batches
-2. **Use multiple Google accounts** (different cookies.txt files for different batches)
-3. **Run from a residential IP** (not a cloud IP) — bypasses the underlying block
-4. **Don't run the verifier first** — just put URLs in `youtube_urls.txt` and let the main pipeline try to download them. Failed downloads are skipped gracefully.
+- Run from a residential IP (no bot-block, no cookies needed)
+- Process in batches of 5-10 videos per session
+- Use multiple Google accounts (cycle cookies.txt files)
+- Run locally and `git push` results back
 
 ## Quality notes
 
@@ -217,23 +223,26 @@ Auto-captions are **pseudo-labels** with ~5-15% error rate. To produce a sellabl
 ```
 amharic-voice-ai/
 ├── README.md                       ← this file
-├── .gitattributes                   ← LFS rules
-├── data/                            ← the dataset
-│   ├── README.md                    ← dataset README (auto-generated)
-│   ├── character_audit.txt          ← Unicode audit report
-│   ├── raw/<vid>/                   ← original audio + VTT + info.json
-│   ├── segments/<vid>/0001.wav      ← per-subtitle clips (LFS)
+├── .gitattributes                  ← LFS rules
+├── requirements.txt
+├── data/                           ← the dataset (3.3 GB, mostly LFS)
+│   ├── README.md                   ← dataset README (auto-generated)
+│   ├── character_audit.txt         ← Unicode audit report
+│   ├── raw/<vid>/                  ← original audio + VTT + info.json
+│   ├── segments/<vid>/0001.wav     ← per-subtitle clips (LFS)
 │   ├── manifests/{train,val,test}.jsonl
 │   └── hf_dataset/{train,val,test,all}/  ← HuggingFace save_to_disk (LFS)
 ├── scripts/
-│   ├── amharic_dataset.py           ← main pipeline
-│   ├── amharic_text_utils.py        ← Ge'ez text cleaner + audit
-│   ├── find_amharic_videos.py       ← YouTube search
-│   ├── verify_candidates.py         ← caption verification
-│   ├── start_bgutil.py              ← bgutil-pot server launcher
-│   ├── smoke_test.py                ← synthetic-data test
-│   └── validate_dataset.py          ← load + inspect
+│   ├── amharic_dataset.py          ← main pipeline
+│   ├── amharic_text_utils.py       ← Ge'ez text cleaner + audit
+│   ├── find_amharic_videos.py      ← YouTube search
+│   ├── verify_candidates.py        ← caption verification
+│   ├── rebuild_dataset.py          ← rebuild from existing segments
+│   ├── start_bgutil.py             ← bgutil-pot server launcher
+│   ├── smoke_test.py               ← synthetic-data test
+│   └── validate_dataset.py         ← load + inspect
 └── docs/
-    ├── candidate_videos.json        ← search results
-    └── SCALING.md                   ← how to scale to 10+ hours
+    ├── candidate_videos.json       ← search results (192 candidates)
+    ├── selected_videos.json
+    └── SCALING.md                  ← how to scale to 10+ hours
 ```
